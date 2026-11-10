@@ -1,57 +1,86 @@
-# bounce 0.3.2
+# bounce
 
-A bouncing-ball sequencer for Norns and nb voices. No grid required.
+A bouncing-ball sequencer for norns and nb. No grid or arc required.
 
-Balls fall, drift sideways and trigger notes on floor impacts. Left is low pitch; right is high. Impact speed sets velocity. Each ball disappears after its assigned number of bounces. An accepted final impact can ring out.
+Balls fall, drift sideways and trigger notes when they hit the floor. Horizontal position determines pitch, quantised to the selected scale. Impact speed determines velocity. Each ball disappears after its assigned number of bounces.
 
-## Trigger cap
+## Install
 
-Bounce sends at most 16 note-on triggers per second, globally across all balls, with a minimum 62.5 ms between accepted triggers. Excess impacts are dropped, never queued. Balls continue moving and counting their lifespan; only sounding impacts flash. Releases are never rate-limited. This applies to Bounce-generated notes, not manual triggers in a voice’s PARAMS. The cap reduces trigger overload; it is not an anti-aliasing filter or an audio-polyphony limit.
+Run in Maiden:
 
-## Harmony and note motion
+```text
+;install https://github.com/grumbledor-e/bounce
+```
 
-Enable **random progression** in PARAMS to loop four scale-degree triads, beginning on the tonic. **Beats per chord** sets the pacing and **reroll progression** generates a fresh loop. Chord changes apply immediately to incoming notes; held notes retain their pitch. The bottom-left readout shows the current chord.
-
-**Pan width** maps impact position to stereo placement on nb voices advertising a per-note pan target.
-
-**Voices** selects 1 (mono) to 16 held notes, default 8. At the limit, a new pitch releases an existing note using **voice stealing**: oldest (first), newest (last), random, lowest pitch, highest pitch, quietest (lowest trigger velocity), or loudest (highest trigger velocity). The incoming note always plays. Repeated pitches release and retrigger their own note. Lowering the voice count immediately releases excess notes using the selected policy.
-
-These controls manage notes held by Bounce. Each nb voice controls actual audio polyphony, release tails and whether note-off ends a sound. Percussive one-shot voices can continue ringing after a steal. Increase **note length** to let chord tones overlap.
-
-All four LFOs offer a rising saw shape.
+The nb library is bundled. Choose an installed nb player in PARAMS and use its controls to shape the sound.
 
 ## Controls
 
 | Control | Action |
 | --- | --- |
-| E1 | Lifespan: 1–32 floor bounces |
-| E2 | Density: 0–8 new balls per second |
+| E1 | Lifespan, 1–32 bounces |
+| E2 | Density, 0–8 new balls per second |
 | E3 | Gravity |
-| K2 | Pause/resume physics and spawning; pause releases active notes |
-| K3 | Drop one extra ball |
-| K1 + E1 | Note length in seconds |
+| K2 | Pause / resume |
+| K3 | Drop one ball |
+| K1 + E1 | Note length, 0.02–4 seconds |
 | K1 + K3 | Clear balls and release notes |
 
-Lifespan and sideways drift are assigned when each ball is born. Changing lifespan affects new balls. Gravity and bounce elasticity affect all current balls. Ball collisions and side-wall contacts do not trigger notes. Nearly exhausted bounces retain a small rebound to avoid floor chatter.
+Pausing releases held notes and freezes physics, chord progression and LFOs.
 
-## Sound and settings
+## Harmony
 
-PARAMS contains the nb voice selector, scale, lowest note, octave range, bounce elasticity, drift and four LFO groups. Each LFO has target, waveform, rate and depth. Targets: density, gravity, elasticity, drift, note length, velocity and the voice's generic nb modulation input. That last input depends on the voice (emplaitress uses timbre); unsupported voices ignore it. Modulation never rewrites the base physics parameters. Voice modulation is clamped to nb's 0–1 range; its negative half-cycle rests at zero. LFOs pause with transport.
+Set **lowest note**, **scale** and **octaves** in PARAMS.
 
-Defaults: `emplait 1`, percussive string model, moderate decay, C natural minor. The native emplaitress envelope and timbre parameters remain in its PARAMS group. The screen's E1 changes lifespan; note length is K1+E1. In percussive voices note length may not change the sound: use the voice's decay control. No custom resonant filter or stutter is included in this release.
+Enable **random progression** to loop four scale-derived triads, beginning on the tonic. **Beats per chord** sets the duration of each chord using the norns clock tempo. **Reroll progression** generates a fresh loop.
 
-Select any other installed nb voice in PARAMS. If emplaitress is absent, the script starts with `none` and prompts you to select a voice. External voices require their usual MIDI/crow setup. Repeated pitches explicitly retrigger rather than allowing overlapping note-offs to cut later notes. Maximum 32 balls; actual audio polyphony is determined by the selected voice.
+Chord changes apply immediately to incoming notes. Held notes retain their pitch, allowing chords to overlap at longer note lengths.
 
-## Install
+The bottom-left readout shows the root and scale, or the current chord when progression is enabled.
 
-Copy the entire `bounce` folder into `~/dust/code/` and select `bounce`. The nb library is bundled. To use the default sound, install and enable [emplaitress](https://github.com/sixolet/emplaitress) and restart Norns first. Bounce does not install mods or modify their source.
+## Voices and stealing
 
-## Validation and limits
+**Voices** sets the maximum number of held notes from **1 (mono) to 16**, defaulting to 8.
 
-Lua syntax checked. Automated local checks cover exact lifespans 1–32, ten simulated minutes at maximum density, ball bounds/cap, clear, and mocked Norns/nb initialization, default selection, note release, pause, voice switching, preset read and cleanup. These are simulation and API checks, not hardware audio/CPU tests. This is a first hardware-test build; Norns playback and real voice compatibility remain to be verified.
+At capacity, **voice stealing** chooses which held note to release before playing the incoming note.
+
+| Mode | Note released |
+| --- | --- |
+| Oldest (first) | Earliest triggered |
+| Newest (last) | Most recently triggered |
+| Random | Random held note |
+| Lowest pitch | Lowest held pitch |
+| Highest pitch | Highest held pitch |
+| Quietest | Lowest trigger velocity |
+| Loudest | Highest trigger velocity |
+
+Repeated pitches release and retrigger their existing note. Lowering the voice count immediately releases excess notes using the selected policy.
+
+The selected nb player determines audible polyphony and release behaviour. Percussive sounds and release tails may continue after a note is stolen.
+
+## Modulation
+
+Four LFOs each provide target, shape, rate and depth.
+
+Targets include density, gravity, bounce elasticity, drift, note length, velocity and the player's generic nb modulation input. The response to **voice mod** depends on the selected player.
+
+## nb and MIDI
+
+Bounce sends notes, velocity and note duration through nb. Each player supplies its own synthesis, sampling or external instrument connection.
+
+For external MIDI sequencing:
+
+1. Connect the synth or MIDI interface before loading Bounce.
+2. Select its `midi: [device]` player in PARAMS.
+3. Match the MIDI channel to the receiving instrument.
+4. Set **modulation CC** and assign an LFO to **voice mod** to control that CC.
+
+Note length and voice stealing also apply to MIDI output. Set the voice count to suit the receiving synth's polyphony.
 
 ## Credits
 
-nb by sixolet: https://github.com/sixolet/nb
-Bundled unchanged `lib/nb.lua` and `lib/player.lua` from commit `400e0b3889d44b0f4f989e27e9a34f1ae732e376` (under `lib/nb/lib/`).
-Emplaitress by sixolet; Plaits by Emilie Gillet; Norns by monome.
+[nb](https://github.com/sixolet/nb) by sixolet.
+
+Bundled nb library files from commit `400e0b3889d44b0f4f989e27e9a34f1ae732e376`.
+
+[norns](https://monome.org/norns/) by monome.
