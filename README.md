@@ -1,6 +1,6 @@
 # bounce
 
-A bouncing-ball sequencer for norns and nb. No grid or arc required.
+A bouncing-ball sequencer for norns and nb.
 
 Balls fall, drift sideways and trigger notes when they hit the floor. Horizontal position determines pitch, quantised to the selected scale. Impact speed determines velocity. Each ball disappears after its assigned number of bounces.
 
